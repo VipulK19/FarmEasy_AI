@@ -1,0 +1,46 @@
+<resources>
+    <string name="app_name">FarmEasy</string>
+    <string name="app_tagline">Smart Farmer Advisory Platform</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">Home</string>
+    <string name="nav_advisory">AI Advisor</string>
+    <string name="nav_farm">Farm</string>
+    <string name="nav_services">Services</string>
+    <string name="nav_profile">Profile</string>
+
+    <!-- Features -->
+    <string name="feature_disease_detection">Crop Disease Detection</string>
+    <string name="feature_soil_fertility">Soil Health &amp; NPK</string>
+    <string name="feature_recommendations">Smart Recommendations</string>
+    <string name="feature_weather">Weather Forecast</string>
+    <string name="feature_schemes">Govt Schemes &amp; Subsidies</string>
+    <string name="feature_dealers">Find Agri Dealers</string>
+    <string name="feature_marketplace">Kisan Marketplace</string>
+    <string name="feature_voice_assistant">Voice Assistant</string>
+    <string name="feature_notifications">Advisory Alerts</string>
+
+    <!-- Common Actions -->
+    <string name="action_save">Save</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_retry">Retry</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_edit">Edit</string>
+    <string name="action_submit">Submit</string>
+    <string name="action_search">Search…</string>
+    <string name="action_apply">Apply</string>
+    <string name="action_view_all">View All</string>
+    <string name="action_add_farm">Add Farm</string>
+    <string name="action_add_crop">Add Crop</string>
+    <string name="action_demo_mode">Explore Demo Mode</string>
+    <string name="action_logout">Logout</string>
+
+    <!-- States -->
+    <string name="loading">Loading data…</string>
+    <string name="empty_title">No records found</string>
+    <string name="empty_desc">There is no data to display right now.</string>
+    <string name="error_generic">Something went wrong. Please check your connection and try again.</string>
+    <string name="offline_cached_notice">Showing cached offline data.</string>
+    <string name="demo_mode_badge">DEMO / DEVELOPMENT MODE</string>
+    <string name="ai_disclaimer">Notice: FarmEasy provides decision-support advisory based on algorithmic inference. It does not replace certified agronomist evaluation or lab soil testing.</string>
+</resources>
