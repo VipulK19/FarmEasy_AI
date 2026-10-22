@@ -8,8 +8,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -23,6 +22,8 @@ fun ProfileScreen(
     onEvent: (ProfileUiEvent) -> Unit,
     onLoggedOut: () -> Unit
 ) {
+    var showAdvancedConfig by remember { mutableStateOf(false) }
+
     LaunchedEffect(uiState.isLoggedOut) {
         if (uiState.isLoggedOut) {
             onLoggedOut()
@@ -155,34 +156,47 @@ fun ProfileScreen(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            Text(
-                text = "Cloud Integration & Developer Credentials",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
+            // Expandable Optional Config Card
+            Card(
+                shape = RoundedCornerShape(Spacing.cornerRadiusMedium),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Advanced System Options",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        IconButton(onClick = { showAdvancedConfig = !showAdvancedConfig }) {
+                            Icon(
+                                imageVector = if (showAdvancedConfig) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                contentDescription = "Toggle Advanced Settings"
+                            )
+                        }
+                    }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            FarmEasyCard {
-                Text(
-                    text = "Supabase PostgreSQL & Groq AI Config",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Configure live Supabase REST endpoints, Row-Level Security, or Groq API token for cloud synchronization.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                OutlinedButton(
-                    onClick = { onEvent(ProfileUiEvent.ShowBackendDialog) },
-                    shape = RoundedCornerShape(Spacing.cornerRadiusSmall)
-                ) {
-                    Icon(imageVector = Icons.Default.CloudSync, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Configure Cloud API Services")
+                    if (showAdvancedConfig) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Optional API configuration for connecting custom Supabase or Groq cloud endpoints.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        OutlinedButton(
+                            onClick = { onEvent(ProfileUiEvent.ShowBackendDialog) },
+                            shape = RoundedCornerShape(Spacing.cornerRadiusSmall)
+                        ) {
+                            Icon(imageVector = Icons.Default.CloudSync, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Configure API Keys")
+                        }
+                    }
                 }
             }
 
@@ -221,7 +235,7 @@ private fun BackendConfigDialog(
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    text = "Enter optional Supabase and Groq keys to connect real production backends.",
+                    text = "Enter optional Supabase and Groq keys to connect custom backends.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

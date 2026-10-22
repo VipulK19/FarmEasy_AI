@@ -202,7 +202,7 @@ data class Order(
     val id: String = UUID.randomUUID().toString(),
     val items: List<CartItem>,
     val totalAmount: Double,
-    val status: String = "Confirmed (Demo Checkout)",
+    val status: String = "Confirmed",
     val deliveryAddress: String,
     val createdAt: Long = System.currentTimeMillis()
 )

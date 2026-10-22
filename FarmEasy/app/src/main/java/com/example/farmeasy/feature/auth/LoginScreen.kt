@@ -123,7 +123,7 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             SecondaryButton(
-                text = "Explore in Demo Mode",
+                text = "Quick Sign In as Kisan",
                 onClick = { onEvent(AuthUiEvent.DemoLoginClicked) }
             )
 

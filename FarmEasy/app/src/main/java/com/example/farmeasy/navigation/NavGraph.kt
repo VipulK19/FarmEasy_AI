@@ -39,6 +39,8 @@ fun FarmEasyNavGraph(
 
     val isOnline by appContainer.networkMonitor.isOnline.collectAsStateWithLifecycle(initialValue = true)
 
+    val factory = remember(appContainer) { AppViewModelFactory(appContainer) }
+
     val bottomNavRoutes = setOf(
         Screen.Home.route,
         Screen.Chatbot.route,
@@ -79,13 +81,7 @@ fun FarmEasyNavGraph(
                 ) {
                     // Auth
                     composable(Screen.Login.route) {
-                        val viewModel = remember {
-                            AuthViewModel(
-                                appContainer.loginUseCase,
-                                appContainer.registerUseCase,
-                                appContainer.loginDemoUseCase
-                            )
-                        }
+                        val viewModel: AuthViewModel = viewModel(factory = factory)
                         val uiState by viewModel.uiState.collectAsStateWithLifecycle()
                         LoginScreen(
                             uiState = uiState,
@@ -100,13 +96,7 @@ fun FarmEasyNavGraph(
                     }
 
                     composable(Screen.Register.route) {
-                        val viewModel = remember {
-                            AuthViewModel(
-                                appContainer.loginUseCase,
-                                appContainer.registerUseCase,
-                                appContainer.loginDemoUseCase
-                            )
-                        }
+                        val viewModel: AuthViewModel = viewModel(factory = factory)
                         val uiState by viewModel.uiState.collectAsStateWithLifecycle()
                         RegisterScreen(
                             uiState = uiState,
@@ -122,16 +112,7 @@ fun FarmEasyNavGraph(
 
                     // Dashboard
                     composable(Screen.Home.route) {
-                        val viewModel = remember {
-                            DashboardViewModel(
-                                appContainer.authRepository,
-                                appContainer.farmRepository,
-                                appContainer.weatherRepository,
-                                appContainer.recommendationRepository,
-                                appContainer.diseaseRepository,
-                                appContainer.soilRepository
-                            )
-                        }
+                        val viewModel: DashboardViewModel = viewModel(factory = factory)
                         val uiState by viewModel.uiState.collectAsStateWithLifecycle()
                         DashboardScreen(
                             uiState = uiState,
@@ -142,13 +123,7 @@ fun FarmEasyNavGraph(
 
                     // AI Chatbot
                     composable(Screen.Chatbot.route) {
-                        val viewModel = remember {
-                            ChatViewModel(
-                                appContainer.sendChatMessageUseCase,
-                                appContainer.preferencesRepository,
-                                appContainer.audioSpeechManager
-                            )
-                        }
+                        val viewModel: ChatViewModel = viewModel(factory = factory)
                         val uiState by viewModel.uiState.collectAsStateWithLifecycle()
                         ChatScreen(
                             uiState = uiState,
@@ -159,7 +134,7 @@ fun FarmEasyNavGraph(
 
                     // Farm & Crops
                     composable(Screen.FarmList.route) {
-                        val viewModel = remember { FarmViewModel(appContainer.manageFarmUseCase) }
+                        val viewModel: FarmViewModel = viewModel(factory = factory)
                         val uiState by viewModel.uiState.collectAsStateWithLifecycle()
                         FarmListScreen(
                             uiState = uiState,
@@ -169,7 +144,7 @@ fun FarmEasyNavGraph(
                     }
 
                     composable(Screen.AddEditFarm.route) {
-                        val viewModel = remember { FarmViewModel(appContainer.manageFarmUseCase) }
+                        val viewModel: FarmViewModel = viewModel(factory = factory)
                         val uiState by viewModel.uiState.collectAsStateWithLifecycle()
                         AddEditFarmScreen(
                             uiState = uiState,
@@ -187,7 +162,7 @@ fun FarmEasyNavGraph(
 
                     // Crop Disease Detection
                     composable(Screen.DiseaseDetection.route) {
-                        val viewModel = remember { DiseaseViewModel(appContainer.analyzeDiseaseUseCase) }
+                        val viewModel: DiseaseViewModel = viewModel(factory = factory)
                         val uiState by viewModel.uiState.collectAsStateWithLifecycle()
                         DiseaseDetectionScreen(
                             uiState = uiState,
@@ -198,7 +173,7 @@ fun FarmEasyNavGraph(
 
                     // Soil Health
                     composable(Screen.SoilAssessment.route) {
-                        val viewModel = remember { SoilViewModel(appContainer.assessSoilUseCase) }
+                        val viewModel: SoilViewModel = viewModel(factory = factory)
                         val uiState by viewModel.uiState.collectAsStateWithLifecycle()
                         SoilAssessmentScreen(
                             uiState = uiState,
@@ -209,7 +184,7 @@ fun FarmEasyNavGraph(
 
                     // Recommendations
                     composable(Screen.Recommendations.route) {
-                        val viewModel = remember { RecommendationViewModel(appContainer.recommendationRepository) }
+                        val viewModel: RecommendationViewModel = viewModel(factory = factory)
                         val uiState by viewModel.uiState.collectAsStateWithLifecycle()
                         RecommendationScreen(
                             uiState = uiState,
@@ -220,7 +195,7 @@ fun FarmEasyNavGraph(
 
                     // Schemes
                     composable(Screen.Schemes.route) {
-                        val viewModel = remember { SchemeViewModel(appContainer.schemeRepository) }
+                        val viewModel: SchemeViewModel = viewModel(factory = factory)
                         val uiState by viewModel.uiState.collectAsStateWithLifecycle()
                         SchemesScreen(
                             uiState = uiState,
@@ -231,7 +206,7 @@ fun FarmEasyNavGraph(
 
                     // Loans
                     composable(Screen.Loans.route) {
-                        val viewModel = remember { SchemeViewModel(appContainer.schemeRepository) }
+                        val viewModel: SchemeViewModel = viewModel(factory = factory)
                         val uiState by viewModel.uiState.collectAsStateWithLifecycle()
                         LoansScreen(
                             uiState = uiState,
@@ -241,7 +216,7 @@ fun FarmEasyNavGraph(
 
                     // Dealer Locator
                     composable(Screen.Dealers.route) {
-                        val viewModel = remember { DealerViewModel(appContainer.dealerRepository) }
+                        val viewModel: DealerViewModel = viewModel(factory = factory)
                         val uiState by viewModel.uiState.collectAsStateWithLifecycle()
                         DealerLocatorScreen(
                             uiState = uiState,
@@ -252,7 +227,7 @@ fun FarmEasyNavGraph(
 
                     // Marketplace
                     composable(Screen.Marketplace.route) {
-                        val viewModel = remember { MarketplaceViewModel(appContainer.manageMarketplaceUseCase) }
+                        val viewModel: MarketplaceViewModel = viewModel(factory = factory)
                         val uiState by viewModel.uiState.collectAsStateWithLifecycle()
                         MarketplaceScreen(
                             uiState = uiState,
@@ -263,7 +238,7 @@ fun FarmEasyNavGraph(
                     }
 
                     composable(Screen.Cart.route) {
-                        val viewModel = remember { MarketplaceViewModel(appContainer.manageMarketplaceUseCase) }
+                        val viewModel: MarketplaceViewModel = viewModel(factory = factory)
                         val uiState by viewModel.uiState.collectAsStateWithLifecycle()
                         CartScreen(
                             uiState = uiState,
@@ -274,7 +249,7 @@ fun FarmEasyNavGraph(
 
                     // Weather
                     composable(Screen.Weather.route) {
-                        val viewModel = remember { WeatherViewModel(appContainer.getWeatherUseCase) }
+                        val viewModel: WeatherViewModel = viewModel(factory = factory)
                         val uiState by viewModel.uiState.collectAsStateWithLifecycle()
                         WeatherScreen(
                             uiState = uiState,
@@ -285,13 +260,7 @@ fun FarmEasyNavGraph(
 
                     // Voice Assistant
                     composable(Screen.VoiceAssistant.route) {
-                        val viewModel = remember {
-                            VoiceViewModel(
-                                appContainer.audioSpeechManager,
-                                appContainer.sendChatMessageUseCase,
-                                appContainer.preferencesRepository
-                            )
-                        }
+                        val viewModel: VoiceViewModel = viewModel(factory = factory)
                         val uiState by viewModel.uiState.collectAsStateWithLifecycle()
                         VoiceAssistantScreen(
                             uiState = uiState,
@@ -302,7 +271,7 @@ fun FarmEasyNavGraph(
 
                     // Notifications
                     composable(Screen.Notifications.route) {
-                        val viewModel = remember { NotificationViewModel(appContainer.notificationRepository) }
+                        val viewModel: NotificationViewModel = viewModel(factory = factory)
                         val uiState by viewModel.uiState.collectAsStateWithLifecycle()
                         NotificationsScreen(
                             uiState = uiState,
@@ -313,12 +282,7 @@ fun FarmEasyNavGraph(
 
                     // Profile
                     composable(Screen.Profile.route) {
-                        val viewModel = remember {
-                            ProfileViewModel(
-                                appContainer.authRepository,
-                                appContainer.preferencesRepository
-                            )
-                        }
+                        val viewModel: ProfileViewModel = viewModel(factory = factory)
                         val uiState by viewModel.uiState.collectAsStateWithLifecycle()
                         ProfileScreen(
                             uiState = uiState,

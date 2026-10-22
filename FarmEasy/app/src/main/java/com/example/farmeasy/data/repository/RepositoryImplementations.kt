@@ -113,7 +113,7 @@ class FarmRepositoryImpl(
     }
 
     override fun getCrops(farmId: String): Flow<List<Crop>> {
-        return cropDao.cropsFlow
+        return cropDao.getCropsForFarmFlow(farmId)
     }
 
     override suspend fun addCrop(crop: Crop): Result<Unit> {
@@ -126,8 +126,8 @@ class FarmRepositoryImpl(
         return Result.success(Unit)
     }
 
-    override suspend fun deleteCrop(cropId: String): Result<Unit> {
-        cropDao.delete(cropId, "")
+    override suspend fun deleteCrop(cropId: String, farmId: String): Result<Unit> {
+        cropDao.delete(cropId, farmId)
         return Result.success(Unit)
     }
 }
@@ -295,7 +295,7 @@ class MarketplaceRepositoryImpl(
         val order = Order(
             items = items,
             totalAmount = total,
-            status = "Confirmed (Demo Order)",
+            status = "Confirmed",
             deliveryAddress = deliveryAddress
         )
         ordersFlow.value = listOf(order) + ordersFlow.value

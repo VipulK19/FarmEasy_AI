@@ -153,5 +153,5 @@ open class FakeFarmRepository : FarmRepository {
     override fun getCrops(farmId: String): Flow<List<Crop>> = flowOf(emptyList())
     override suspend fun addCrop(crop: Crop): Result<Unit> = Result.success(Unit)
     override suspend fun updateCrop(crop: Crop): Result<Unit> = Result.success(Unit)
-    override suspend fun deleteCrop(cropId: String): Result<Unit> = Result.success(Unit)
+    override suspend fun deleteCrop(cropId: String, farmId: String): Result<Unit> = Result.success(Unit)
 }

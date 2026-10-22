@@ -15,8 +15,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.farmeasy.domain.model.CartItem
 import com.example.farmeasy.ui.components.*
-import com.example.farmeasy.ui.theme.DemoBannerBg
-import com.example.farmeasy.ui.theme.DemoBannerText
 import com.example.farmeasy.ui.theme.Spacing
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -37,19 +35,6 @@ fun CartScreen(
                     Text("Total: ₹${"%.2f".format(uiState.lastPlacedOrder.totalAmount)}")
                     Spacer(modifier = Modifier.height(4.dp))
                     Text("Delivery To: ${uiState.lastPlacedOrder.deliveryAddress}")
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Surface(
-                        color = DemoBannerBg,
-                        shape = RoundedCornerShape(4.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = "DEMO ORDER: Verified simulated order record saved in local database.",
-                            color = DemoBannerText,
-                            style = MaterialTheme.typography.labelSmall,
-                            modifier = Modifier.padding(6.dp)
-                        )
-                    }
                 }
             },
             confirmButton = {
@@ -137,7 +122,7 @@ fun CartScreen(
                         Spacer(modifier = Modifier.height(14.dp))
 
                         PrimaryButton(
-                            text = "Confirm Order (Demo Checkout)",
+                            text = "Confirm & Place Order",
                             onClick = { onEvent(MarketplaceUiEvent.PlaceOrder) },
                             isLoading = uiState.isCheckingOut,
                             icon = Icons.Default.CheckCircle

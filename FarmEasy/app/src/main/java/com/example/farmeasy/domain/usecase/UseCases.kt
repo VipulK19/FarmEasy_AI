@@ -72,8 +72,8 @@ class ManageFarmUseCase(private val repository: FarmRepository) {
         return repository.addCrop(crop)
     }
 
-    suspend fun deleteCrop(cropId: String): Result<Unit> {
-        return repository.deleteCrop(cropId)
+    suspend fun deleteCrop(cropId: String, farmId: String = ""): Result<Unit> {
+        return repository.deleteCrop(cropId, farmId)
     }
 }
 

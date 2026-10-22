@@ -7,11 +7,12 @@ import com.example.farmeasy.domain.model.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.withContext
 
 class FarmDao(private val dbHelper: FarmEasyDatabaseHelper) {
     private val _farmsFlow = MutableStateFlow<List<Farm>>(emptyList())
-    val farmsFlow: Flow<List<Farm>> = _farmsFlow
+    val farmsFlow: Flow<List<Farm>> = _farmsFlow.onStart { refresh() }
 
     suspend fun refresh() = withContext(Dispatchers.IO) {
         val list = mutableListOf<Farm>()
@@ -66,9 +67,13 @@ class FarmDao(private val dbHelper: FarmEasyDatabaseHelper) {
 
 class CropDao(private val dbHelper: FarmEasyDatabaseHelper) {
     private val _cropsFlow = MutableStateFlow<List<Crop>>(emptyList())
-    val cropsFlow: Flow<List<Crop>> = _cropsFlow
+
+    fun getCropsForFarmFlow(farmId: String): Flow<List<Crop>> {
+        return _cropsFlow.onStart { refresh(farmId) }
+    }
 
     suspend fun refresh(farmId: String) = withContext(Dispatchers.IO) {
+        if (farmId.isBlank()) return@withContext
         val list = mutableListOf<Crop>()
         val db = dbHelper.readableDatabase
         val cursor: Cursor = db.query(
@@ -123,13 +128,15 @@ class CropDao(private val dbHelper: FarmEasyDatabaseHelper) {
     suspend fun delete(cropId: String, farmId: String) = withContext(Dispatchers.IO) {
         val db = dbHelper.writableDatabase
         db.delete(FarmEasyDatabaseHelper.TABLE_CROPS, "id = ?", arrayOf(cropId))
-        refresh(farmId)
+        if (farmId.isNotBlank()) {
+            refresh(farmId)
+        }
     }
 }
 
 class DiseaseDao(private val dbHelper: FarmEasyDatabaseHelper) {
     private val _historyFlow = MutableStateFlow<List<CropDiseaseAnalysis>>(emptyList())
-    val historyFlow: Flow<List<CropDiseaseAnalysis>> = _historyFlow
+    val historyFlow: Flow<List<CropDiseaseAnalysis>> = _historyFlow.onStart { refresh() }
 
     suspend fun refresh() = withContext(Dispatchers.IO) {
         val list = mutableListOf<CropDiseaseAnalysis>()
@@ -207,7 +214,7 @@ class DiseaseDao(private val dbHelper: FarmEasyDatabaseHelper) {
 
 class SoilDao(private val dbHelper: FarmEasyDatabaseHelper) {
     private val _historyFlow = MutableStateFlow<List<SoilAssessment>>(emptyList())
-    val historyFlow: Flow<List<SoilAssessment>> = _historyFlow
+    val historyFlow: Flow<List<SoilAssessment>> = _historyFlow.onStart { refresh() }
 
     suspend fun refresh() = withContext(Dispatchers.IO) {
         val list = mutableListOf<SoilAssessment>()
@@ -290,7 +297,7 @@ class SoilDao(private val dbHelper: FarmEasyDatabaseHelper) {
 
 class CartDao(private val dbHelper: FarmEasyDatabaseHelper) {
     private val _cartFlow = MutableStateFlow<List<CartItem>>(emptyList())
-    val cartFlow: Flow<List<CartItem>> = _cartFlow
+    val cartFlow: Flow<List<CartItem>> = _cartFlow.onStart { refresh() }
 
     suspend fun refresh() = withContext(Dispatchers.IO) {
         val list = mutableListOf<CartItem>()
@@ -350,7 +357,7 @@ class CartDao(private val dbHelper: FarmEasyDatabaseHelper) {
 
 class ChatDao(private val dbHelper: FarmEasyDatabaseHelper) {
     private val _messagesFlow = MutableStateFlow<List<ChatMessage>>(emptyList())
-    val messagesFlow: Flow<List<ChatMessage>> = _messagesFlow
+    val messagesFlow: Flow<List<ChatMessage>> = _messagesFlow.onStart { refresh() }
 
     suspend fun refresh() = withContext(Dispatchers.IO) {
         val list = mutableListOf<ChatMessage>()
@@ -396,7 +403,7 @@ class ChatDao(private val dbHelper: FarmEasyDatabaseHelper) {
 
 class NotificationDao(private val dbHelper: FarmEasyDatabaseHelper) {
     private val _notificationsFlow = MutableStateFlow<List<AppNotification>>(emptyList())
-    val notificationsFlow: Flow<List<AppNotification>> = _notificationsFlow
+    val notificationsFlow: Flow<List<AppNotification>> = _notificationsFlow.onStart { refresh() }
 
     suspend fun refresh() = withContext(Dispatchers.IO) {
         val list = mutableListOf<AppNotification>()

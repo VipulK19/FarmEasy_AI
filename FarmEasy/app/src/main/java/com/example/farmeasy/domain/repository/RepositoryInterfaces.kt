@@ -5,7 +5,7 @@ import kotlinx.coroutines.flow.Flow
 
 interface AuthRepository {
     fun getCurrentFarmer(): Flow<Farmer?>
-    suspend fun login(phoneOrEmail: String, password: String):Result<Farmer>
+    suspend fun login(phoneOrEmail: String, password: String): Result<Farmer>
     suspend fun register(farmer: Farmer, password: String): Result<Farmer>
     suspend fun logout(): Result<Unit>
     suspend fun loginAsDemoFarmer(): Farmer
@@ -20,7 +20,7 @@ interface FarmRepository {
     fun getCrops(farmId: String): Flow<List<Crop>>
     suspend fun addCrop(crop: Crop): Result<Unit>
     suspend fun updateCrop(crop: Crop): Result<Unit>
-    suspend fun deleteCrop(cropId: String): Result<Unit>
+    suspend fun deleteCrop(cropId: String, farmId: String = ""): Result<Unit>
 }
 
 interface DiseaseRepository {

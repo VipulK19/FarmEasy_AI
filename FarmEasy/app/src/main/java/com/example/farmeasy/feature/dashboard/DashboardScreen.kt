@@ -29,7 +29,6 @@ fun DashboardScreen(
         topBar = {
             FarmEasyTopBar(
                 title = "FarmEasy",
-                isDemoMode = uiState.isDemoMode,
                 actions = {
                     IconButton(onClick = { onNavigate(Screen.Notifications.route) }) {
                         Icon(imageVector = Icons.Default.Notifications, contentDescription = "Alerts")

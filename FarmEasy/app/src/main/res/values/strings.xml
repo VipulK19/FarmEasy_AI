@@ -32,7 +32,7 @@
     <string name="action_view_all">View All</string>
     <string name="action_add_farm">Add Farm</string>
     <string name="action_add_crop">Add Crop</string>
-    <string name="action_demo_mode">Explore Demo Mode</string>
+    <string name="action_demo_mode">Quick Sign In as Kisan</string>
     <string name="action_logout">Logout</string>
 
     <!-- States -->
@@ -41,6 +41,6 @@
     <string name="empty_desc">There is no data to display right now.</string>
     <string name="error_generic">Something went wrong. Please check your connection and try again.</string>
     <string name="offline_cached_notice">Showing cached offline data.</string>
-    <string name="demo_mode_badge">DEMO / DEVELOPMENT MODE</string>
+    <string name="demo_mode_badge">LOCAL DATA SYNC ACTIVE</string>
     <string name="ai_disclaimer">Notice: FarmEasy provides decision-support advisory based on algorithmic inference. It does not replace certified agronomist evaluation or lab soil testing.</string>
 </resources>

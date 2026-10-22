@@ -1,6 +1,5 @@
 package com.example.farmeasy.feature.dashboard
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -30,15 +29,21 @@ data class ServiceItem(
 fun ServicesScreen(
     onNavigate: (String) -> Unit
 ) {
-    val services = listOf(
+    val cropCareServices = listOf(
+        ServiceItem("Crop Disease Detection", "Instant plant pathology diagnosis via leaf photos", Icons.Default.DocumentScanner, Screen.DiseaseDetection.route),
+        ServiceItem("Soil Health & NPK", "Fertility scoring and tailored nutrient management", Icons.Default.Science, Screen.SoilAssessment.route),
+        ServiceItem("Weather Forecast", "7-day precipitation, wind, and spray window advisories", Icons.Default.Cloud, Screen.Weather.route)
+    )
+
+    val marketServices = listOf(
         ServiceItem("Govt Schemes & Subsidies", "Explore PM-KISAN, PMFBY, and machinery subsidies", Icons.Default.AccountBalance, Screen.Schemes.route),
         ServiceItem("Agricultural Loans & Credit", "KCC crop loans, tractor financing, interest subvention", Icons.Default.Payment, Screen.Loans.route),
-        ServiceItem("Agri Dealer Locator", "Find nearby certified fertilizer, seed, and tool stores", Icons.Default.Store, Screen.Dealers.route),
         ServiceItem("Kisan Marketplace", "Order certified fertilizers, bio-pesticides, and tools", Icons.Default.ShoppingBag, Screen.Marketplace.route),
-        ServiceItem("Weather Forecast", "7-day precipitation, wind, and spray window advisories", Icons.Default.Cloud, Screen.Weather.route),
+        ServiceItem("Agri Dealer Locator", "Find nearby certified fertilizer, seed, and tool stores", Icons.Default.Store, Screen.Dealers.route)
+    )
+
+    val assistantServices = listOf(
         ServiceItem("Voice Assistant", "Hands-free speech-to-text agricultural inquiries", Icons.Default.Mic, Screen.VoiceAssistant.route),
-        ServiceItem("Crop Disease Detection", "Instant plant pathology diagnosis via leaf photos", Icons.Default.DocumentScanner, Screen.DiseaseDetection.route),
-        ServiceItem("Soil Health & NPK Assessment", "Fertility scoring and tailored nutrient management", Icons.Default.Science, Screen.SoilAssessment.route),
         ServiceItem("Advisory Notifications", "Real-time alerts, seasonal reminders, and weather notices", Icons.Default.Notifications, Screen.Notifications.route)
     )
 
@@ -55,24 +60,43 @@ fun ServicesScreen(
                 .padding(Spacing.medium)
         ) {
             Text(
-                text = "Unified Agricultural Ecosystem",
+                text = "Farming & Crop Care",
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
             )
-            Text(
-                text = "Select any service below to explore advisory and support tools.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Spacer(modifier = Modifier.height(8.dp))
+            cropCareServices.forEach { item ->
+                ServiceCard(item = item, onClick = { onNavigate(item.route) })
+                Spacer(modifier = Modifier.height(10.dp))
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            services.forEach { item ->
-                ServiceCard(
-                    item = item,
-                    onClick = { onNavigate(item.route) }
-                )
-                Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = "Marketplace & Schemes",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            marketServices.forEach { item ->
+                ServiceCard(item = item, onClick = { onNavigate(item.route) })
+                Spacer(modifier = Modifier.height(10.dp))
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = "Assistant & Alerts",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            assistantServices.forEach { item ->
+                ServiceCard(item = item, onClick = { onNavigate(item.route) })
+                Spacer(modifier = Modifier.height(10.dp))
             }
         }
     }

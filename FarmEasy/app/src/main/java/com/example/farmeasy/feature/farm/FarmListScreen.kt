@@ -43,6 +43,23 @@ fun FarmListScreen(
         )
     }
 
+    if (uiState.showAddCropDialog && uiState.selectedFarm != null) {
+        AddCropDialog(
+            farmName = uiState.selectedFarm.name,
+            cropName = uiState.cropNameInput,
+            cropVariety = uiState.cropVarietyInput,
+            cropStage = uiState.cropStageInput,
+            cropNotes = uiState.cropNotesInput,
+            errorMessage = uiState.errorMessage,
+            onCropNameChange = { onEvent(FarmUiEvent.CropNameChanged(it)) },
+            onCropVarietyChange = { onEvent(FarmUiEvent.CropVarietyChanged(it)) },
+            onCropStageChange = { onEvent(FarmUiEvent.CropStageChanged(it)) },
+            onCropNotesChange = { onEvent(FarmUiEvent.CropNotesChanged(it)) },
+            onSave = { onEvent(FarmUiEvent.SaveCrop) },
+            onDismiss = { onEvent(FarmUiEvent.DismissAddCropModal) }
+        )
+    }
+
     Scaffold(
         topBar = {
             FarmEasyTopBar(
@@ -88,6 +105,7 @@ fun FarmListScreen(
                             crops = if (farm.id == uiState.selectedFarm?.id) uiState.cropsForSelectedFarm else emptyList(),
                             onSelect = { onEvent(FarmUiEvent.FarmSelected(farm)) },
                             onDelete = { onEvent(FarmUiEvent.ConfirmDeleteFarm(farm)) },
+                            onAddCrop = { onEvent(FarmUiEvent.ShowAddCropModal) },
                             onDeleteCrop = { crop -> onEvent(FarmUiEvent.ConfirmDeleteCrop(crop)) }
                         )
                     }
@@ -104,6 +122,7 @@ private fun FarmParcelCard(
     crops: List<Crop>,
     onSelect: () -> Unit,
     onDelete: () -> Unit,
+    onAddCrop: () -> Unit,
     onDeleteCrop: (Crop) -> Unit
 ) {
     FarmEasyCard(onClick = onSelect) {
@@ -143,17 +162,29 @@ private fun FarmParcelCard(
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Spacer(modifier = Modifier.height(10.dp))
 
-            Text(
-                text = "Cultivated Crops (${crops.size}):",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Cultivated Crops (${crops.size}):",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
 
-            Spacer(modifier = Modifier.height(8.dp))
+                TextButton(onClick = onAddCrop) {
+                    Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Add Crop")
+                }
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
 
             if (crops.isEmpty()) {
                 Text(
-                    text = "No active crops in this parcel. Add a crop below.",
+                    text = "No active crops recorded. Tap 'Add Crop' to register a crop cycle.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.outline
                 )
@@ -169,25 +200,25 @@ private fun FarmParcelCard(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(8.dp),
+                                .padding(10.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Column {
+                            Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = "${crop.cropName} (${crop.variety})",
+                                    text = "${crop.cropName}${if (crop.variety.isNotBlank()) " (${crop.variety})" else ""}",
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.Bold
                                 )
                                 Text(
-                                    text = "Stage: ${crop.growthStage} • ${crop.notes}",
+                                    text = "Growth Stage: ${crop.growthStage}${if (crop.notes.isNotBlank()) " • ${crop.notes}" else ""}",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                             IconButton(
                                 onClick = { onDeleteCrop(crop) },
-                                modifier = Modifier.size(24.dp)
+                                modifier = Modifier.size(28.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Close,
@@ -201,4 +232,74 @@ private fun FarmParcelCard(
             }
         }
     }
+}
+
+@Composable
+private fun AddCropDialog(
+    farmName: String,
+    cropName: String,
+    cropVariety: String,
+    cropStage: String,
+    cropNotes: String,
+    errorMessage: String?,
+    onCropNameChange: (String) -> Unit,
+    onCropVarietyChange: (String) -> Unit,
+    onCropStageChange: (String) -> Unit,
+    onCropNotesChange: (String) -> Unit,
+    onSave: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add Crop to $farmName", fontWeight = FontWeight.Bold) },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                FormTextField(
+                    value = cropName,
+                    onValueChange = onCropNameChange,
+                    label = "Crop Name",
+                    placeholder = "e.g. Wheat / Paddy / Tomato / Cotton"
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                FormTextField(
+                    value = cropVariety,
+                    onValueChange = onCropVarietyChange,
+                    label = "Variety (Optional)",
+                    placeholder = "e.g. Lok-1 / JS 335 / Bt Cotton"
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                FormTextField(
+                    value = cropStage,
+                    onValueChange = onCropStageChange,
+                    label = "Growth Stage",
+                    placeholder = "e.g. Sowing / Vegetative / Flowering"
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                FormTextField(
+                    value = cropNotes,
+                    onValueChange = onCropNotesChange,
+                    label = "Field Notes (Optional)",
+                    placeholder = "e.g. Basal DAP applied"
+                )
+                if (errorMessage != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = errorMessage,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = onSave) {
+                Text("Add Crop")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }

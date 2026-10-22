@@ -15,11 +15,14 @@ data class FarmUiState(
     val farms: List<Farm> = emptyList(),
     val selectedFarm: Farm? = null,
     val cropsForSelectedFarm: List<Crop> = emptyList(),
-    // Form fields for Add/Edit
+    // Form fields for Add/Edit Farm
     val farmNameInput: String = "",
     val farmAreaInput: String = "2.5",
     val soilTypeInput: String = "Medium Black Soil",
     val locationNameInput: String = "Plot 1",
+    val isSaveSuccess: Boolean = false,
+    // Add Crop Modal
+    val showAddCropDialog: Boolean = false,
     val cropNameInput: String = "Soybean",
     val cropVarietyInput: String = "JS 335",
     val cropStageInput: String = "Vegetative",
@@ -37,10 +40,13 @@ sealed interface FarmUiEvent {
     data class SoilTypeChanged(val type: String) : FarmUiEvent
     data class LocationChanged(val location: String) : FarmUiEvent
     object SaveFarm : FarmUiEvent
+    object ResetSaveState : FarmUiEvent
     data class ConfirmDeleteFarm(val farm: Farm) : FarmUiEvent
     object DismissDeleteFarm : FarmUiEvent
     object DeleteFarmConfirmed : FarmUiEvent
 
+    object ShowAddCropModal : FarmUiEvent
+    object DismissAddCropModal : FarmUiEvent
     data class CropNameChanged(val name: String) : FarmUiEvent
     data class CropVarietyChanged(val variety: String) : FarmUiEvent
     data class CropStageChanged(val stage: String) : FarmUiEvent
@@ -91,17 +97,20 @@ class FarmViewModel(
                 _uiState.update { it.copy(selectedFarm = event.farm) }
                 loadCropsForFarm(event.farm.id)
             }
-            is FarmUiEvent.FarmNameChanged -> _uiState.update { it.copy(farmNameInput = event.name) }
-            is FarmUiEvent.FarmAreaChanged -> _uiState.update { it.copy(farmAreaInput = event.area) }
+            is FarmUiEvent.FarmNameChanged -> _uiState.update { it.copy(farmNameInput = event.name, errorMessage = null) }
+            is FarmUiEvent.FarmAreaChanged -> _uiState.update { it.copy(farmAreaInput = event.area, errorMessage = null) }
             is FarmUiEvent.SoilTypeChanged -> _uiState.update { it.copy(soilTypeInput = event.type) }
             is FarmUiEvent.LocationChanged -> _uiState.update { it.copy(locationNameInput = event.location) }
 
             is FarmUiEvent.SaveFarm -> saveFarm()
+            is FarmUiEvent.ResetSaveState -> _uiState.update { it.copy(isSaveSuccess = false) }
             is FarmUiEvent.ConfirmDeleteFarm -> _uiState.update { it.copy(farmToDelete = event.farm) }
             is FarmUiEvent.DismissDeleteFarm -> _uiState.update { it.copy(farmToDelete = null) }
             is FarmUiEvent.DeleteFarmConfirmed -> deleteFarm()
 
-            is FarmUiEvent.CropNameChanged -> _uiState.update { it.copy(cropNameInput = event.name) }
+            is FarmUiEvent.ShowAddCropModal -> _uiState.update { it.copy(showAddCropDialog = true) }
+            is FarmUiEvent.DismissAddCropModal -> _uiState.update { it.copy(showAddCropDialog = false) }
+            is FarmUiEvent.CropNameChanged -> _uiState.update { it.copy(cropNameInput = event.name, errorMessage = null) }
             is FarmUiEvent.CropVarietyChanged -> _uiState.update { it.copy(cropVarietyInput = event.variety) }
             is FarmUiEvent.CropStageChanged -> _uiState.update { it.copy(cropStageInput = event.stage) }
             is FarmUiEvent.CropNotesChanged -> _uiState.update { it.copy(cropNotesInput = event.notes) }
@@ -122,7 +131,7 @@ class FarmViewModel(
             return
         }
         if (area == null || area <= 0.0) {
-            _uiState.update { it.copy(errorMessage = "Acreage must be greater than zero.") }
+            _uiState.update { it.copy(errorMessage = "Acreage must be a number greater than zero.") }
             return
         }
 
@@ -140,6 +149,7 @@ class FarmViewModel(
                 _uiState.update {
                     it.copy(
                         isLoading = false,
+                        isSaveSuccess = true,
                         farmNameInput = "",
                         selectedFarm = farm
                     )
@@ -176,14 +186,21 @@ class FarmViewModel(
 
         viewModelScope.launch {
             manageFarmUseCase.saveCrop(crop)
-            _uiState.update { it.copy(cropNameInput = "", cropVarietyInput = "", cropNotesInput = "") }
+            _uiState.update {
+                it.copy(
+                    showAddCropDialog = false,
+                    cropNameInput = "Soybean",
+                    cropVarietyInput = "",
+                    cropNotesInput = ""
+                )
+            }
         }
     }
 
     private fun deleteCrop() {
         val crop = _uiState.value.cropToDelete ?: return
         viewModelScope.launch {
-            manageFarmUseCase.deleteCrop(crop.id)
+            manageFarmUseCase.deleteCrop(crop.id, crop.farmId)
             _uiState.update { it.copy(cropToDelete = null) }
         }
     }

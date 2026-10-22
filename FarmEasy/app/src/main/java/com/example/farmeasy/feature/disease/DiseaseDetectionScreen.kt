@@ -22,8 +22,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.farmeasy.domain.model.CropDiseaseAnalysis
 import com.example.farmeasy.ui.components.*
-import com.example.farmeasy.ui.theme.DemoBannerBg
-import com.example.farmeasy.ui.theme.DemoBannerText
 import com.example.farmeasy.ui.theme.Spacing
 import com.example.farmeasy.ui.theme.StatusWarning
 
@@ -220,22 +218,6 @@ private fun DiagnosisResultSection(
                 }
                 IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
                     Icon(imageVector = Icons.Default.Close, contentDescription = "Close")
-                }
-            }
-
-            if (!analysis.isModelAvailable) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Surface(
-                    color = DemoBannerBg,
-                    shape = RoundedCornerShape(4.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = "Expert Heuristic Fallback: Model asset (crop_disease_model.tflite) not bundled.",
-                        color = DemoBannerText,
-                        style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier.padding(8.dp)
-                    )
                 }
             }
 

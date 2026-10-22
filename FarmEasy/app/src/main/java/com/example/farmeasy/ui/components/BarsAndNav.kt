@@ -18,8 +18,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.farmeasy.navigation.Screen
-import com.example.farmeasy.ui.theme.DemoBannerBg
-import com.example.farmeasy.ui.theme.DemoBannerText
 import com.example.farmeasy.ui.theme.StatusWarning
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -28,77 +26,40 @@ fun FarmEasyTopBar(
     title: String,
     canNavigateBack: Boolean = false,
     onNavigateBack: () -> Unit = {},
-    isDemoMode: Boolean = true,
     actions: @Composable RowScope.() -> Unit = {}
 ) {
-    Column {
-        TopAppBar(
-            title = {
-                Column {
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            },
-            navigationIcon = {
-                if (canNavigateBack) {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
-                        )
-                    }
-                } else {
-                    Icon(
-                        imageVector = Icons.Default.Agriculture,
-                        contentDescription = "FarmEasy Logo",
-                        modifier = Modifier.padding(start = 16.dp, end = 8.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-            },
-            actions = actions,
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = MaterialTheme.colorScheme.surface,
-                titleContentColor = MaterialTheme.colorScheme.onSurface,
-                actionIconContentColor = MaterialTheme.colorScheme.primary
+    TopAppBar(
+        title = {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
             )
-        )
-
-        AnimatedVisibility(
-            visible = isDemoMode,
-            enter = expandVertically(),
-            exit = shrinkVertically()
-        ) {
-            Surface(
-                color = DemoBannerBg,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+        },
+        navigationIcon = {
+            if (canNavigateBack) {
+                IconButton(onClick = onNavigateBack) {
                     Icon(
-                        imageVector = Icons.Default.Info,
-                        contentDescription = "Demo Mode",
-                        tint = DemoBannerText,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "DEMO & EVALUATION MODE — Data preserved locally",
-                        color = DemoBannerText,
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back"
                     )
                 }
+            } else {
+                Icon(
+                    imageVector = Icons.Default.Agriculture,
+                    contentDescription = "FarmEasy Logo",
+                    modifier = Modifier.padding(start = 16.dp, end = 8.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
             }
-        }
-    }
+        },
+        actions = actions,
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            titleContentColor = MaterialTheme.colorScheme.onSurface,
+            actionIconContentColor = MaterialTheme.colorScheme.primary
+        )
+    )
 }
 
 data class BottomNavItem(
@@ -122,7 +83,7 @@ fun FarmEasyBottomNavigation(
 
     NavigationBar(
         containerColor = MaterialTheme.colorScheme.surface,
-        tonalElevation = 6.dp
+        tonalElevation = 4.dp
     ) {
         items.forEach { item ->
             val isSelected = currentRoute == item.route

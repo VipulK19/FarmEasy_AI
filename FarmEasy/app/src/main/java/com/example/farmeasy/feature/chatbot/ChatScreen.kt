@@ -25,8 +25,6 @@ import com.example.farmeasy.domain.model.ChatMessage
 import com.example.farmeasy.domain.model.MessageSender
 import com.example.farmeasy.ui.components.ConfirmationDialog
 import com.example.farmeasy.ui.components.FarmEasyTopBar
-import com.example.farmeasy.ui.theme.DemoBannerBg
-import com.example.farmeasy.ui.theme.DemoBannerText
 import com.example.farmeasy.ui.theme.Spacing
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -271,21 +269,6 @@ private fun ChatMessageBubble(
                 tonalElevation = 1.dp
             ) {
                 Column(modifier = Modifier.padding(12.dp)) {
-                    if (!isUser && message.isDemoResponse) {
-                        Surface(
-                            color = DemoBannerBg,
-                            shape = RoundedCornerShape(4.dp),
-                            modifier = Modifier.padding(bottom = 6.dp)
-                        ) {
-                            Text(
-                                text = "DEMO ADVISORY ENGINE",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = DemoBannerText,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                            )
-                        }
-                    }
 
                     Text(
                         text = message.text,
