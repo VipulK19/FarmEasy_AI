@@ -1,5 +1,6 @@
 package com.example.farmeasy.domain.model
 
+import com.example.farmeasy.BuildConfig
 import java.util.UUID
 
 /**
@@ -273,5 +274,5 @@ data class UserPreferences(
     val isDemoModeActive: Boolean = true,
     val supabaseUrl: String = "",
     val supabaseAnonKey: String = "",
-    val groqApiKey: String = ""
+    val groqApiKey: String = BuildConfig.GROQ_API_KEY
 )

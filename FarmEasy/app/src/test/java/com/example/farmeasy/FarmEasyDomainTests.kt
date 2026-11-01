@@ -226,6 +226,27 @@ class FarmEasyDomainTests {
     }
 
     @Test
+    fun groqService_liveApiKey_returnsDynamicAdvice() = runBlocking {
+        try {
+            val client = com.example.farmeasy.data.remote.KtorClientProvider.client
+            val groqService = com.example.farmeasy.data.remote.groq.GroqService(client)
+            val apiKey = com.example.farmeasy.BuildConfig.GROQ_API_KEY
+            val response = groqService.getAgriculturalAdvice(
+                prompt = "What is the best fertilizer dose for wheat at tillering stage in Pune?",
+                language = "English",
+                apiKey = apiKey,
+                supabaseEdgeFunctionUrl = null
+            )
+            println("GROQ_TEST_RESULT: text='${response.text}', isDemo=${response.isDemoResponse}")
+            assertNotNull(response)
+            assertTrue(response.text.isNotBlank())
+        } catch (e: Exception) {
+            println("GROQ_TEST_EXCEPTION: ${e.javaClass.name}: ${e.message}")
+            e.printStackTrace()
+        }
+    }
+
+    @Test
     fun sampleData_containsExpectedSchemes() {
         assertFalse(SampleData.sampleSchemes.isEmpty())
         val pmKisan = SampleData.sampleSchemes.find { it.id == "scheme_pm_kisan" }

@@ -108,8 +108,9 @@ class GroqService(private val client: HttpClient) {
                         isDemoResponse = false
                     )
                 }
-            } catch (_: Exception) {
-                // Fallthrough to demo mode
+            } catch (e: Exception) {
+                println("GROQ_API_ERROR: ${e.message}")
+                e.printStackTrace()
             }
         }
 

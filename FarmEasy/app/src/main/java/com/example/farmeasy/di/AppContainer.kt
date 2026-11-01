@@ -92,7 +92,7 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
     }
 
     override val recommendationRepository: RecommendationRepository by lazy {
-        RecommendationRepositoryImpl()
+        RecommendationRepositoryImpl(groqService, preferencesDataStore)
     }
 
     override val schemeRepository: SchemeRepository by lazy {

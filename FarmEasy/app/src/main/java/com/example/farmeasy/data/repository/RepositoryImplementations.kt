@@ -1,5 +1,6 @@
 package com.example.farmeasy.data.repository
 
+import com.example.farmeasy.BuildConfig
 import com.example.farmeasy.core.ml.CropDiseaseClassifier
 import com.example.farmeasy.core.ml.SoilRecommendationEngine
 import com.example.farmeasy.data.local.PreferencesDataStore
@@ -178,12 +179,46 @@ class SoilRepositoryImpl(
     }
 }
 
-class RecommendationRepositoryImpl : RecommendationRepository {
+class RecommendationRepositoryImpl(
+    private val groqService: GroqService? = null,
+    private val preferencesDataStore: PreferencesDataStore? = null
+) : RecommendationRepository {
     private val _recommendationsFlow = MutableStateFlow(SampleData.sampleRecommendations)
 
     override fun getRecommendations(): Flow<List<AgriculturalRecommendation>> = _recommendationsFlow
 
     override suspend fun refreshRecommendations(): Result<List<AgriculturalRecommendation>> {
+        if (groqService != null && preferencesDataStore != null) {
+            try {
+                val prefs = preferencesDataStore.preferencesFlow.first()
+                val apiKey = prefs.groqApiKey.ifBlank { BuildConfig.GROQ_API_KEY }
+                val prompt = "Provide 3 short prioritized seasonal agricultural field advisory recommendations for Indian farmers in format Category|Title|Action|Rationale|Safety. Example: Disease|Leaf Spot|Spray Hexaconazole|Moist weather|Wear gloves"
+                val response = groqService.getAgriculturalAdvice(
+                    prompt = prompt,
+                    language = prefs.selectedLanguage,
+                    apiKey = apiKey,
+                    supabaseEdgeFunctionUrl = if (prefs.supabaseUrl.isNotBlank()) "${prefs.supabaseUrl}/functions/v1/groq-advisory" else null
+                )
+                if (response.text.isNotBlank() && !response.isDemoResponse) {
+                    val lines = response.text.lines().filter { it.contains("|") }
+                    val newRecs = lines.mapIndexed { idx, line ->
+                        val parts = line.split("|").map { it.trim() }
+                        AgriculturalRecommendation(
+                            id = "ai_rec_${idx}_${System.currentTimeMillis()}",
+                            category = parts.getOrNull(0) ?: "General",
+                            title = parts.getOrNull(1) ?: "Seasonal Field Advisory",
+                            actionSuggested = parts.getOrNull(2) ?: response.text.take(80),
+                            rationale = parts.getOrNull(3) ?: "Generated via Groq AI advisory engine",
+                            safetyPrecautions = parts.getOrNull(4) ?: "Observe certified label safety guidelines",
+                            confidenceScore = 0.94f
+                        )
+                    }
+                    if (newRecs.isNotEmpty()) {
+                        _recommendationsFlow.value = newRecs
+                    }
+                }
+            } catch (_: Exception) {}
+        }
         return Result.success(_recommendationsFlow.value)
     }
 }
@@ -357,10 +392,11 @@ class ChatRepositoryImpl(
 
         val prefs = preferencesDataStore.preferencesFlow.first()
         val edgeUrl = if (prefs.supabaseUrl.isNotBlank()) "${prefs.supabaseUrl}/functions/v1/groq-advisory" else null
+        val apiKey = prefs.groqApiKey.ifBlank { BuildConfig.GROQ_API_KEY }
         val response = groqService.getAgriculturalAdvice(
             prompt = prompt,
             language = language,
-            apiKey = prefs.groqApiKey.ifBlank { null },
+            apiKey = apiKey,
             supabaseEdgeFunctionUrl = edgeUrl
         )
 

@@ -2,6 +2,7 @@ package com.example.farmeasy.data.local
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.example.farmeasy.BuildConfig
 import com.example.farmeasy.domain.model.UserPreferences
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,7 +22,7 @@ class PreferencesDataStore(context: Context) {
             isDemoModeActive = prefs.getBoolean("demo_mode", true),
             supabaseUrl = prefs.getString("supabase_url", "") ?: "",
             supabaseAnonKey = prefs.getString("supabase_anon_key", "") ?: "",
-            groqApiKey = prefs.getString("groq_api_key", "") ?: ""
+            groqApiKey = prefs.getString("groq_api_key", BuildConfig.GROQ_API_KEY) ?: BuildConfig.GROQ_API_KEY
         )
     }
 
