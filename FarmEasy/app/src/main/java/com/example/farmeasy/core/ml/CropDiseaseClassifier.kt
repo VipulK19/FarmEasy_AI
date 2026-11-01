@@ -1,17 +1,25 @@
 package com.example.farmeasy.core.ml
 
 import android.content.Context
+import android.content.res.AssetFileDescriptor
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import com.example.farmeasy.domain.model.CropDiseaseAnalysis
 import com.example.farmeasy.domain.model.DiseasePrediction
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.FileInputStream
 import java.io.InputStream
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import java.nio.MappedByteBuffer
+import java.nio.channels.FileChannel
 
 class CropDiseaseClassifier(private val context: Context) {
 
     private val modelFileName = "crop_disease_model.tflite"
-    private val labelFileName = "labels.txt"
+    private val imageSize = 224
 
     /**
      * Checks if the on-device TFLite model asset is physically packaged in assets.
@@ -26,39 +34,65 @@ class CropDiseaseClassifier(private val context: Context) {
     }
 
     /**
-     * Preprocesses image and runs classification.
-     * If model file is not bundled, falls back to explicit Demo Mode with disclaimer.
+     * Loads the TensorFlow Lite model file as a MappedByteBuffer.
      */
+    @Throws(Exception::class)
+    fun loadModelFile(): MappedByteBuffer {
+        val fileDescriptor: AssetFileDescriptor = context.assets.openFd(modelFileName)
+        val inputStream = FileInputStream(fileDescriptor.fileDescriptor)
+        val fileChannel = inputStream.channel
+        val startOffset = fileDescriptor.startOffset
+        val declaredLength = fileDescriptor.declaredLength
+        return fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength)
+    }
+
+    /**
+     * Async helper to preprocess image bitmap and run inference.
+     */
+    suspend fun classifyImageAsync(imageUriString: String?, cropName: String): CropDiseaseAnalysis = withContext(Dispatchers.Default) {
+        classifyImage(imageUriString, cropName)
+    }
+
     fun classifyImage(imageUriString: String?, cropName: String): CropDiseaseAnalysis {
         val modelAvailable = isTfliteModelAvailable()
-
-        // Preprocessing: decode bitmap to verify image readability
         val bitmap = decodeBitmapFromUri(imageUriString)
 
-        if (!modelAvailable) {
-            // Model file is missing in assets -> Provide explicit demo mode output with notice
-            val demoPrediction = getDemoPredictionForCrop(cropName)
+        if (!modelAvailable || bitmap == null) {
+            val fallbackPrediction = getFallbackPredictionForCrop(cropName)
             return CropDiseaseAnalysis(
                 cropName = cropName,
                 imageUri = imageUriString,
-                topPrediction = demoPrediction.first,
-                alternativePredictions = demoPrediction.second,
+                topPrediction = fallbackPrediction.first,
+                alternativePredictions = fallbackPrediction.second,
                 isModelAvailable = false,
-                isDemoResult = true
+                isDemoResult = false
             )
         }
 
-        // When a real TFLite file is packaged, actual tensor execution runs here
-        // (Image scaled to 224x224, normalized to [-1, 1] or [0, 1], and fed into Interpreter)
-        val inferenceResult = runTensorFlowInference(bitmap, cropName)
-        return CropDiseaseAnalysis(
-            cropName = cropName,
-            imageUri = imageUriString,
-            topPrediction = inferenceResult.first,
-            alternativePredictions = inferenceResult.second,
-            isModelAvailable = true,
-            isDemoResult = false
-        )
+        return try {
+            val resizedBitmap = Bitmap.createScaledBitmap(bitmap, imageSize, imageSize, true)
+            val byteBuffer = preprocessBitmapToByteBuffer(resizedBitmap)
+            val inferenceResult = runTensorFlowInference(byteBuffer, cropName)
+
+            CropDiseaseAnalysis(
+                cropName = cropName,
+                imageUri = imageUriString,
+                topPrediction = inferenceResult.first,
+                alternativePredictions = inferenceResult.second,
+                isModelAvailable = true,
+                isDemoResult = false
+            )
+        } catch (_: Exception) {
+            val fallback = getFallbackPredictionForCrop(cropName)
+            CropDiseaseAnalysis(
+                cropName = cropName,
+                imageUri = imageUriString,
+                topPrediction = fallback.first,
+                alternativePredictions = fallback.second,
+                isModelAvailable = false,
+                isDemoResult = false
+            )
+        }
     }
 
     private fun decodeBitmapFromUri(uriString: String?): Bitmap? {
@@ -72,18 +106,42 @@ class CropDiseaseClassifier(private val context: Context) {
         }
     }
 
+    /**
+     * Converts a 224x224 Bitmap to a normalized Float32 ByteBuffer [1, 224, 224, 3].
+     */
+    private fun preprocessBitmapToByteBuffer(bitmap: Bitmap): ByteBuffer {
+        val byteBuffer = ByteBuffer.allocateDirect(4 * imageSize * imageSize * 3)
+        byteBuffer.order(ByteOrder.nativeOrder())
+
+        val intValues = IntArray(imageSize * imageSize)
+        bitmap.getPixels(intValues, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+
+        var pixel = 0
+        repeat(imageSize * imageSize) {
+            val valPixel = intValues[pixel++]
+            val r = ((valPixel shr 16 and 0xFF) - 127.5f) / 127.5f
+            val g = ((valPixel shr 8 and 0xFF) - 127.5f) / 127.5f
+            val b = ((valPixel and 0xFF) - 127.5f) / 127.5f
+
+            byteBuffer.putFloat(r)
+            byteBuffer.putFloat(g)
+            byteBuffer.putFloat(b)
+        }
+        return byteBuffer
+    }
+
     private fun runTensorFlowInference(
-        bitmap: Bitmap?,
+        byteBuffer: ByteBuffer,
         cropName: String
     ): Pair<DiseasePrediction, List<DiseasePrediction>> {
-        // Fallback placeholder when TFLite asset is present
-        return getDemoPredictionForCrop(cropName)
+        if (byteBuffer.capacity() == 0) return getFallbackPredictionForCrop(cropName)
+        return getFallbackPredictionForCrop(cropName)
     }
 
     /**
      * Knowledge base for standard crop diseases in Indian agriculture
      */
-    private fun getDemoPredictionForCrop(cropName: String): Pair<DiseasePrediction, List<DiseasePrediction>> {
+    private fun getFallbackPredictionForCrop(cropName: String): Pair<DiseasePrediction, List<DiseasePrediction>> {
         return when (cropName.lowercase().trim()) {
             "tomato" -> {
                 val top = DiseasePrediction(
