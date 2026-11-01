@@ -5,9 +5,8 @@ import com.example.farmeasy.data.sample.SampleData
 import com.example.farmeasy.domain.model.*
 import com.example.farmeasy.domain.repository.AuthRepository
 import com.example.farmeasy.domain.repository.FarmRepository
-import com.example.farmeasy.domain.usecase.LoginUseCase
-import com.example.farmeasy.domain.usecase.ManageFarmUseCase
-import com.example.farmeasy.domain.usecase.RegisterUseCase
+import com.example.farmeasy.domain.repository.MarketplaceRepository
+import com.example.farmeasy.domain.usecase.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
@@ -42,6 +41,29 @@ class FarmEasyDomainTests {
     }
 
     @Test
+    fun soilParameters_negativeNitrogen_returnsFalse() {
+        val negativeN = SoilParameters(
+            ph = 6.5,
+            nitrogen = -10.0,
+            phosphorus = 35.0,
+            potassium = 210.0
+        )
+        assertFalse(negativeN.isValid())
+    }
+
+    @Test
+    fun soilParameters_invalidMoisture_returnsFalse() {
+        val invalidMoisture = SoilParameters(
+            ph = 6.5,
+            nitrogen = 180.0,
+            phosphorus = 35.0,
+            potassium = 210.0,
+            moisturePercent = 105.0
+        )
+        assertFalse(invalidMoisture.isValid())
+    }
+
+    @Test
     fun soilEngine_optimalParameters_returnsHighFertility() {
         val params = SoilParameters(
             ph = 6.8,
@@ -68,6 +90,19 @@ class FarmEasyDomainTests {
         val assessment = soilEngine.assess(params)
         assertTrue(assessment.fertilityScore < 60)
         assertTrue(assessment.fertilizerRecommendation.contains("lime") || assessment.fertilizerRecommendation.contains("dolomite"))
+    }
+
+    @Test
+    fun soilEngine_alkalineSoil_recommendsGypsum() {
+        val params = SoilParameters(
+            ph = 8.5,
+            nitrogen = 180.0,
+            phosphorus = 30.0,
+            potassium = 200.0,
+            intendedCrop = "Cotton"
+        )
+        val assessment = soilEngine.assess(params)
+        assertTrue(assessment.fertilizerRecommendation.contains("gypsum"))
     }
 
     @Test
@@ -106,6 +141,17 @@ class FarmEasyDomainTests {
     }
 
     @Test
+    fun registerUseCase_emptyName_returnsFailure() = runBlocking {
+        val mockRepo = object : FakeAuthRepository() {}
+        val registerUseCase = RegisterUseCase(mockRepo)
+        val farmer = Farmer(name = "   ", phone = "9876543210")
+
+        val result = registerUseCase(farmer, "password123")
+        assertTrue(result.isFailure)
+        assertEquals("Full name is required.", result.exceptionOrNull()?.message)
+    }
+
+    @Test
     fun registerUseCase_invalidPhone_returnsFailure() = runBlocking {
         val mockRepo = object : FakeAuthRepository() {}
         val registerUseCase = RegisterUseCase(mockRepo)
@@ -117,6 +163,17 @@ class FarmEasyDomainTests {
     }
 
     @Test
+    fun manageFarmUseCase_blankFarmName_returnsFailure() = runBlocking {
+        val mockRepo = object : FakeFarmRepository() {}
+        val manageFarm = ManageFarmUseCase(mockRepo)
+        val farm = Farm(name = "   ", areaInAcres = 2.5)
+
+        val result = manageFarm.saveFarm(farm)
+        assertTrue(result.isFailure)
+        assertEquals("Farm name is required.", result.exceptionOrNull()?.message)
+    }
+
+    @Test
     fun manageFarmUseCase_zeroAcreage_returnsFailure() = runBlocking {
         val mockRepo = object : FakeFarmRepository() {}
         val manageFarm = ManageFarmUseCase(mockRepo)
@@ -125,6 +182,47 @@ class FarmEasyDomainTests {
         val result = manageFarm.saveFarm(farm)
         assertTrue(result.isFailure)
         assertEquals("Farm area must be greater than 0 acres.", result.exceptionOrNull()?.message)
+    }
+
+    @Test
+    fun manageFarmUseCase_blankCropName_returnsFailure() = runBlocking {
+        val mockRepo = object : FakeFarmRepository() {}
+        val manageFarm = ManageFarmUseCase(mockRepo)
+        val crop = Crop(farmId = "farm_1", cropName = "  ")
+
+        val result = manageFarm.saveCrop(crop)
+        assertTrue(result.isFailure)
+        assertEquals("Crop name is required.", result.exceptionOrNull()?.message)
+    }
+
+    @Test
+    fun manageMarketplaceUseCase_checkoutBlankAddress_returnsFailure() = runBlocking {
+        val mockRepo = object : FakeMarketplaceRepository() {}
+        val manageMarketplace = ManageMarketplaceUseCase(mockRepo)
+
+        val result = manageMarketplace.checkout("   ")
+        assertTrue(result.isFailure)
+        assertEquals("Delivery address is required for ordering.", result.exceptionOrNull()?.message)
+    }
+
+    @Test
+    fun analyzeDiseaseUseCase_blankCropName_returnsFailure() = runBlocking {
+        val mockRepo = object : FakeDiseaseRepository() {}
+        val analyzeDisease = AnalyzeDiseaseUseCase(mockRepo)
+
+        val result = analyzeDisease.analyze("  ", null)
+        assertTrue(result.isFailure)
+        assertEquals("Please specify crop name.", result.exceptionOrNull()?.message)
+    }
+
+    @Test
+    fun sendChatMessageUseCase_blankPrompt_returnsFailure() = runBlocking {
+        val mockRepo = object : FakeChatRepository() {}
+        val sendChatMessage = SendChatMessageUseCase(mockRepo)
+
+        val result = sendChatMessage.send("    ", "English")
+        assertTrue(result.isFailure)
+        assertEquals("Message cannot be empty.", result.exceptionOrNull()?.message)
     }
 
     @Test
@@ -154,4 +252,34 @@ open class FakeFarmRepository : FarmRepository {
     override suspend fun addCrop(crop: Crop): Result<Unit> = Result.success(Unit)
     override suspend fun updateCrop(crop: Crop): Result<Unit> = Result.success(Unit)
     override suspend fun deleteCrop(cropId: String, farmId: String): Result<Unit> = Result.success(Unit)
+}
+
+open class FakeMarketplaceRepository : MarketplaceRepository {
+    override fun getProducts(category: String?): Flow<List<MarketplaceProduct>> = flowOf(emptyList())
+    override fun getCart(): Flow<List<CartItem>> = flowOf(emptyList())
+    override suspend fun addToCart(product: MarketplaceProduct, quantity: Int) {}
+    override suspend fun updateQuantity(productId: String, quantity: Int) {}
+    override suspend fun removeFromCart(productId: String) {}
+    override suspend fun clearCart() {}
+    override fun getOrders(): Flow<List<Order>> = flowOf(emptyList())
+    override suspend fun placeOrder(deliveryAddress: String): Result<Order> = Result.success(
+        Order(items = emptyList(), totalAmount = 0.0, deliveryAddress = deliveryAddress)
+    )
+}
+
+open class FakeDiseaseRepository : com.example.farmeasy.domain.repository.DiseaseRepository {
+    override fun getAnalysisHistory(): Flow<List<CropDiseaseAnalysis>> = flowOf(emptyList())
+    override suspend fun analyzeCrop(cropName: String, imageUriString: String?): Result<CropDiseaseAnalysis> {
+        val top = DiseasePrediction("Test Blight", "Test", 0.9f, "Low", "", "", "", "")
+        return Result.success(CropDiseaseAnalysis(cropName = cropName, topPrediction = top))
+    }
+    override suspend fun clearHistory(): Result<Unit> = Result.success(Unit)
+}
+
+open class FakeChatRepository : com.example.farmeasy.domain.repository.ChatRepository {
+    override fun getMessages(): Flow<List<ChatMessage>> = flowOf(emptyList())
+    override suspend fun sendMessage(prompt: String, language: String): Result<ChatMessage> {
+        return Result.success(ChatMessage(sender = MessageSender.ASSISTANT, text = "Reply", language = language))
+    }
+    override suspend fun clearChat(): Result<Unit> = Result.success(Unit)
 }
