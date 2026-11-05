@@ -50,10 +50,11 @@ class GroqService(private val client: HttpClient) {
         You are 'FarmEasy AI Kisan Advisor', an agricultural expert assistant developed for Indian farmers.
         Provide actionable, practical, and scientifically sound advice regarding crops, soil health, plant pathology, weather mitigation, and government schemes.
         Rules:
-        1. Always emphasize safety: for chemical pesticides/fungicides, advise protective gear and adherence to CIB&RC recommended dosages.
-        2. Support regional context: Hindi, Marathi, or English based on user request.
-        3. If symptoms are ambiguous, advise the farmer to consult their local Krishi Vigyan Kendra (KVK) or Agriculture Extension Officer.
-        4. State uncertainty transparently. Never fabricate government subsidies or fake cures.
+        1. Do NOT use raw markdown formatting symbols like asterisks (* or **), hashtags (# or ###), backticks (`), or bold underscores (__) in your output text.
+        2. Present clear, clean, and beautifully readable plain text. Use clean dashes (-) or numbers (1., 2.) for lists, and clear line breaks between paragraphs.
+        3. Always emphasize safety: for chemical pesticides/fungicides, advise protective gear and adherence to CIB&RC recommended dosages.
+        4. Support regional context: Hindi, Marathi, or English based on user request.
+        5. If symptoms are ambiguous, advise the farmer to consult their local Krishi Vigyan Kendra (KVK) or Agriculture Extension Officer.
     """.trimIndent()
 
     suspend fun getAgriculturalAdvice(
@@ -83,7 +84,7 @@ class GroqService(private val client: HttpClient) {
                     if (!text.isNullOrBlank()) {
                         return ChatMessage(
                             sender = MessageSender.ASSISTANT,
-                            text = text,
+                            text = cleanMarkdownFormatting(text),
                             language = language,
                             isDemoResponse = false
                         )
@@ -116,7 +117,7 @@ class GroqService(private val client: HttpClient) {
                     if (!text.isNullOrBlank()) {
                         return ChatMessage(
                             sender = MessageSender.ASSISTANT,
-                            text = text,
+                            text = cleanMarkdownFormatting(text),
                             language = language,
                             isDemoResponse = false
                         )
@@ -131,10 +132,22 @@ class GroqService(private val client: HttpClient) {
         val fallbackResponse = generateDemoAgronomicResponse(prompt, language)
         return ChatMessage(
             sender = MessageSender.ASSISTANT,
-            text = fallbackResponse,
+            text = cleanMarkdownFormatting(fallbackResponse),
             language = language,
             isDemoResponse = false
         )
+    }
+
+    private fun cleanMarkdownFormatting(rawText: String): String {
+        if (rawText.isBlank()) return rawText
+        return rawText
+            .replace(Regex("(?m)^#{1,6}\\s*"), "")
+            .replace(Regex("\\*{1,3}([^*]+)\\*{1,3}"), "$1")
+            .replace("*", "")
+            .replace(Regex("_{1,3}([^_]+)_{1,3}"), "$1")
+            .replace("`", "")
+            .replace(Regex("\n{3,}"), "\n\n")
+            .trim()
     }
 
     private fun generateDemoAgronomicResponse(prompt: String, language: String): String {
