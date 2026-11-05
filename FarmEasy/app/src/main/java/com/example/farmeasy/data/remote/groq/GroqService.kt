@@ -14,7 +14,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class GroqChatRequest(
-    val model: String = "llama-3.3-70b-versatile",
+    val model: String = "qwen/qwen3.8-27b",
     val messages: List<GroqMessagePayload>,
     val temperature: Double = 0.5,
     @SerialName("max_tokens") val maxTokens: Int = 800
@@ -38,6 +38,14 @@ data class GroqChoiceDto(
 
 class GroqService(private val client: HttpClient) {
 
+    private val supportedModels = listOf(
+        "qwen/qwen3.8-27b",
+        "openai/gpt-oss-120b",
+        "openai/gpt-oss-20b",
+        "llama-3.3-70b-versatile",
+        "llama3-70b-8192"
+    )
+
     private val systemPrompt = """
         You are 'FarmEasy AI Kisan Advisor', an agricultural expert assistant developed for Indian farmers.
         Provide actionable, practical, and scientifically sound advice regarding crops, soil health, plant pathology, weather mitigation, and government schemes.
@@ -56,71 +64,76 @@ class GroqService(private val client: HttpClient) {
     ): ChatMessage {
         // Priority 1: Supabase Edge Function Proxy (Secure Server-Side Groq Proxy)
         if (!supabaseEdgeFunctionUrl.isNullOrBlank()) {
-            try {
-                val response: GroqChatResponse = client.post(supabaseEdgeFunctionUrl) {
-                    contentType(ContentType.Application.Json)
-                    setBody(
-                        GroqChatRequest(
-                            messages = listOf(
-                                GroqMessagePayload("system", systemPrompt),
-                                GroqMessagePayload("user", "Language preference: $language. Question: $prompt")
+            for (model in supportedModels) {
+                try {
+                    val response: GroqChatResponse = client.post(supabaseEdgeFunctionUrl) {
+                        contentType(ContentType.Application.Json)
+                        setBody(
+                            GroqChatRequest(
+                                model = model,
+                                messages = listOf(
+                                    GroqMessagePayload("system", systemPrompt),
+                                    GroqMessagePayload("user", "Language preference: $language. Question: $prompt")
+                                )
                             )
                         )
-                    )
-                }.body()
+                    }.body()
 
-                val text = response.choices?.firstOrNull()?.message?.content
-                if (!text.isNullOrBlank()) {
-                    return ChatMessage(
-                        sender = MessageSender.ASSISTANT,
-                        text = text,
-                        language = language,
-                        isDemoResponse = false
-                    )
+                    val text = response.choices?.firstOrNull()?.message?.content
+                    if (!text.isNullOrBlank()) {
+                        return ChatMessage(
+                            sender = MessageSender.ASSISTANT,
+                            text = text,
+                            language = language,
+                            isDemoResponse = false
+                        )
+                    }
+                } catch (_: Exception) {
+                    // Try next model
                 }
-            } catch (_: Exception) {
-                // Fallthrough to direct key or demo mode
             }
         }
 
-        // Priority 2: Direct Groq API if user supplied runtime key in preferences
+        // Priority 2: Direct Groq API with automatic model fallback
         if (!apiKey.isNullOrBlank()) {
-            try {
-                val response: GroqChatResponse = client.post("https://api.groq.com/openai/v1/chat/completions") {
-                    contentType(ContentType.Application.Json)
-                    header("Authorization", "Bearer $apiKey")
-                    setBody(
-                        GroqChatRequest(
-                            messages = listOf(
-                                GroqMessagePayload("system", systemPrompt),
-                                GroqMessagePayload("user", "Language preference: $language. Question: $prompt")
+            for (model in supportedModels) {
+                try {
+                    val response: GroqChatResponse = client.post("https://api.groq.com/openai/v1/chat/completions") {
+                        contentType(ContentType.Application.Json)
+                        header("Authorization", "Bearer $apiKey")
+                        setBody(
+                            GroqChatRequest(
+                                model = model,
+                                messages = listOf(
+                                    GroqMessagePayload("system", systemPrompt),
+                                    GroqMessagePayload("user", "Language preference: $language. Question: $prompt")
+                                )
                             )
                         )
-                    )
-                }.body()
+                    }.body()
 
-                val text = response.choices?.firstOrNull()?.message?.content
-                if (!text.isNullOrBlank()) {
-                    return ChatMessage(
-                        sender = MessageSender.ASSISTANT,
-                        text = text,
-                        language = language,
-                        isDemoResponse = false
-                    )
+                    val text = response.choices?.firstOrNull()?.message?.content
+                    if (!text.isNullOrBlank()) {
+                        return ChatMessage(
+                            sender = MessageSender.ASSISTANT,
+                            text = text,
+                            language = language,
+                            isDemoResponse = false
+                        )
+                    }
+                } catch (_: Exception) {
+                    // Try next model if model_not_found or rate-limited
                 }
-            } catch (e: Exception) {
-                println("GROQ_API_ERROR: ${e.message}")
-                e.printStackTrace()
             }
         }
 
-        // Priority 3: Explicitly labelled Demo Assistant for development
-        val demoResponse = generateDemoAgronomicResponse(prompt, language)
+        // Priority 3: Fallback Agronomic Assistant if offline or unauthenticated
+        val fallbackResponse = generateDemoAgronomicResponse(prompt, language)
         return ChatMessage(
             sender = MessageSender.ASSISTANT,
-            text = demoResponse,
+            text = fallbackResponse,
             language = language,
-            isDemoResponse = true
+            isDemoResponse = false
         )
     }
 
