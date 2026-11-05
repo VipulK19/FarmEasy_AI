@@ -8,6 +8,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
@@ -19,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.farmeasy.domain.model.ChatMessage
@@ -38,7 +41,7 @@ fun ChatScreen(
 ) {
     val listState = rememberLazyListState()
 
-    LaunchedEffect(uiState.messages.size) {
+    LaunchedEffect(uiState.messages.size, uiState.isLoading) {
         if (uiState.messages.isNotEmpty()) {
             listState.animateScrollToItem(uiState.messages.size - 1)
         }
@@ -59,7 +62,6 @@ fun ChatScreen(
             FarmEasyTopBar(
                 title = "AI Kisan Advisor",
                 actions = {
-                    // Language selector chips
                     IconButton(onClick = { onEvent(ChatUiEvent.ShowClearDialog) }) {
                         Icon(imageVector = Icons.Default.DeleteOutline, contentDescription = "Clear Chat")
                     }
@@ -71,6 +73,7 @@ fun ChatScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .imePadding()
         ) {
             // Language selector row
             Surface(
@@ -204,7 +207,15 @@ fun ChatScreen(
                         placeholder = { Text("Ask your farming query...") },
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(24.dp),
-                        maxLines = 4
+                        maxLines = 5,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                        keyboardActions = KeyboardActions(
+                            onSend = {
+                                if (uiState.inputPrompt.isNotBlank() && !uiState.isLoading) {
+                                    onEvent(ChatUiEvent.SendMessage)
+                                }
+                            }
+                        )
                     )
 
                     Spacer(modifier = Modifier.width(8.dp))
