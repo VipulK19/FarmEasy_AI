@@ -20,39 +20,59 @@ import java.nio.ByteOrder
 class CropDiseaseClassifier(private val context: Context) {
 
     private val imageSize = 224
+    @Volatile
     private var pytorchModule: Module? = null
+    @Volatile
+    private var isModuleLoadAttempted = false
 
-    init {
-        pytorchModule = tryToLoadPyTorchModule()
-    }
-
-    private fun assetFilePath(context: Context, assetName: String): String {
-        val file = File(context.filesDir, assetName)
-        if (file.exists() && file.length() > 0) return file.absolutePath
-        context.assets.open(assetName).use { inputStream ->
-            FileOutputStream(file).use { outputStream ->
-                val buffer = ByteArray(4 * 1024)
-                var read: Int
-                while (inputStream.read(buffer).also { read = it } != -1) {
-                    outputStream.write(buffer, 0, read)
+    private fun getOrLoadPyTorchModule(): Module? {
+        if (!isModuleLoadAttempted) {
+            synchronized(this) {
+                if (!isModuleLoadAttempted) {
+                    pytorchModule = tryToLoadPyTorchModule()
+                    isModuleLoadAttempted = true
                 }
-                outputStream.flush()
             }
         }
-        return file.absolutePath
+        return pytorchModule
+    }
+
+    private fun assetFilePath(context: Context, assetName: String): String? {
+        return try {
+            val file = File(context.filesDir, assetName)
+            if (file.exists() && file.length() > 0) return file.absolutePath
+            val list = context.assets.list("") ?: emptyArray()
+            if (!list.contains(assetName)) return null
+
+            context.assets.open(assetName).use { inputStream ->
+                FileOutputStream(file).use { outputStream ->
+                    val buffer = ByteArray(8 * 1024)
+                    var read: Int
+                    while (inputStream.read(buffer).also { read = it } != -1) {
+                        outputStream.write(buffer, 0, read)
+                    }
+                    outputStream.flush()
+                }
+            }
+            file.absolutePath
+        } catch (_: Throwable) {
+            null
+        }
     }
 
     private fun tryToLoadPyTorchModule(): Module? {
         return try {
-            val path = assetFilePath(context, "crop_disease_model_mobile.pt")
-            Module.load(path)
-        } catch (_: Exception) {
-            try {
-                val path = assetFilePath(context, "crop_disease_model.pth")
-                Module.load(path)
-            } catch (_: Exception) {
-                null
+            val pathMobile = assetFilePath(context, "crop_disease_model_mobile.pt")
+            if (pathMobile != null) {
+                return Module.load(pathMobile)
             }
+            val pathPth = assetFilePath(context, "crop_disease_model.pth")
+            if (pathPth != null) {
+                return Module.load(pathPth)
+            }
+            null
+        } catch (_: Throwable) {
+            null
         }
     }
 
@@ -60,11 +80,11 @@ class CropDiseaseClassifier(private val context: Context) {
      * Checks if PyTorch mobile module or asset file is available.
      */
     fun isTfliteModelAvailable(): Boolean {
-        if (pytorchModule != null) return true
+        if (getOrLoadPyTorchModule() != null) return true
         return try {
             val list = context.assets.list("") ?: emptyArray()
             list.contains("crop_disease_model_mobile.pt") || list.contains("crop_disease_model.pth") || list.contains("crop_disease_model.tflite")
-        } catch (_: Exception) {
+        } catch (_: Throwable) {
             false
         }
     }
@@ -73,7 +93,7 @@ class CropDiseaseClassifier(private val context: Context) {
      * Executes PyTorch forward pass inference on a Bitmap image.
      */
     fun predict(bitmap: Bitmap): Pair<Int, Float>? {
-        val module = pytorchModule ?: return null
+        val module = getOrLoadPyTorchModule() ?: return null
         return try {
             val resizedBitmap = Bitmap.createScaledBitmap(bitmap, imageSize, imageSize, true)
             val inputTensor = TensorImageUtils.bitmapToFloat32Tensor(
@@ -85,20 +105,19 @@ class CropDiseaseClassifier(private val context: Context) {
             val scores = outputTensor.dataAsFloatArray
             val maxScoreIdx = scores.indices.maxByOrNull { scores[it] } ?: 0
             Pair(maxScoreIdx, scores[maxScoreIdx])
-        } catch (_: Exception) {
+        } catch (_: Throwable) {
             null
         }
     }
 
     /**
-     * Async helper to preprocess image bitmap and run inference.
+     * Async helper to preprocess image bitmap and run inference without blocking UI.
      */
-    suspend fun classifyImageAsync(imageUriString: String?, cropName: String): CropDiseaseAnalysis = withContext(Dispatchers.Default) {
+    suspend fun classifyImageAsync(imageUriString: String?, cropName: String): CropDiseaseAnalysis = withContext(Dispatchers.IO) {
         classifyImage(imageUriString, cropName)
     }
 
     fun classifyImage(imageUriString: String?, cropName: String): CropDiseaseAnalysis {
-        val modelAvailable = isTfliteModelAvailable()
         val bitmap = decodeBitmapFromUri(imageUriString)
 
         if (bitmap == null) {
@@ -117,6 +136,7 @@ class CropDiseaseClassifier(private val context: Context) {
             val pyTorchResult = predict(bitmap)
             val resizedBitmap = Bitmap.createScaledBitmap(bitmap, imageSize, imageSize, true)
             val leafAnalysis = analyzeLeafBitmap(resizedBitmap)
+            val isModelAvail = pyTorchResult != null || isTfliteModelAvailable()
             
             val confidence = pyTorchResult?.second?.coerceIn(0.70f, 0.98f) ?: leafAnalysis.confidence
 
@@ -131,10 +151,10 @@ class CropDiseaseClassifier(private val context: Context) {
                 imageUri = imageUriString,
                 topPrediction = inferenceResult.first,
                 alternativePredictions = inferenceResult.second,
-                isModelAvailable = modelAvailable,
+                isModelAvailable = isModelAvail,
                 isDemoResult = false
             )
-        } catch (_: Exception) {
+        } catch (_: Throwable) {
             val fallback = getDynamicPredictionForCrop(cropName, 0.88f, "Moderate")
             CropDiseaseAnalysis(
                 cropName = cropName,
@@ -153,7 +173,7 @@ class CropDiseaseClassifier(private val context: Context) {
             val uri = Uri.parse(uriString)
             val inputStream: InputStream? = context.contentResolver.openInputStream(uri)
             BitmapFactory.decodeStream(inputStream)
-        } catch (_: Exception) {
+        } catch (_: Throwable) {
             null
         }
     }
@@ -174,16 +194,13 @@ class CropDiseaseClassifier(private val context: Context) {
 
         var yellowCount = 0
         var brownCount = 0
-        var greenCount = 0
 
         for (pixel in pixels) {
             val r = (pixel shr 16) and 0xFF
             val g = (pixel shr 8) and 0xFF
             val b = pixel and 0xFF
 
-            if (g > r && g > b) {
-                greenCount++
-            } else if (r > 150 && g > 150 && b < 100) {
+            if (r > 150 && g > 150 && b < 100) {
                 yellowCount++
             } else if (r > 100 && g < 90 && b < 70) {
                 brownCount++
