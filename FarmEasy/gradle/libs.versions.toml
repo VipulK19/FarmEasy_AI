@@ -13,8 +13,11 @@ lifecycleCompose = "2.8.7"
 coroutines = "1.9.0"
 serialization = "1.7.3"
 ktor = "2.3.12"
+pytorchLite = "2.1.0"
 
 [libraries]
+pytorch-android-lite = { group = "org.pytorch", name = "pytorch_android_lite", version.ref = "pytorchLite" }
+pytorch-android-torchvision = { group = "org.pytorch", name = "pytorch_android_torchvision_lite", version.ref = "pytorchLite" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }

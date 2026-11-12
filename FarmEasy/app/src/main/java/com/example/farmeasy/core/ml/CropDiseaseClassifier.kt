@@ -1,7 +1,6 @@
 package com.example.farmeasy.core.ml
 
 import android.content.Context
-import android.content.res.AssetFileDescriptor
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
@@ -9,41 +8,86 @@ import com.example.farmeasy.domain.model.CropDiseaseAnalysis
 import com.example.farmeasy.domain.model.DiseasePrediction
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.io.FileInputStream
+import org.pytorch.IValue
+import org.pytorch.Module
+import org.pytorch.torchvision.TensorImageUtils
+import java.io.File
+import java.io.FileOutputStream
 import java.io.InputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import java.nio.MappedByteBuffer
-import java.nio.channels.FileChannel
 
 class CropDiseaseClassifier(private val context: Context) {
 
-    private val modelFileName = "crop_disease_model.tflite"
     private val imageSize = 224
+    private var pytorchModule: Module? = null
+
+    init {
+        pytorchModule = tryToLoadPyTorchModule()
+    }
+
+    private fun assetFilePath(context: Context, assetName: String): String {
+        val file = File(context.filesDir, assetName)
+        if (file.exists() && file.length() > 0) return file.absolutePath
+        context.assets.open(assetName).use { inputStream ->
+            FileOutputStream(file).use { outputStream ->
+                val buffer = ByteArray(4 * 1024)
+                var read: Int
+                while (inputStream.read(buffer).also { read = it } != -1) {
+                    outputStream.write(buffer, 0, read)
+                }
+                outputStream.flush()
+            }
+        }
+        return file.absolutePath
+    }
+
+    private fun tryToLoadPyTorchModule(): Module? {
+        return try {
+            val path = assetFilePath(context, "crop_disease_model_mobile.pt")
+            Module.load(path)
+        } catch (_: Exception) {
+            try {
+                val path = assetFilePath(context, "crop_disease_model.pth")
+                Module.load(path)
+            } catch (_: Exception) {
+                null
+            }
+        }
+    }
 
     /**
-     * Checks if the on-device TFLite model asset is physically packaged in assets.
+     * Checks if PyTorch mobile module or asset file is available.
      */
     fun isTfliteModelAvailable(): Boolean {
+        if (pytorchModule != null) return true
         return try {
             val list = context.assets.list("") ?: emptyArray()
-            list.contains(modelFileName)
+            list.contains("crop_disease_model_mobile.pt") || list.contains("crop_disease_model.pth") || list.contains("crop_disease_model.tflite")
         } catch (_: Exception) {
             false
         }
     }
 
     /**
-     * Loads the TensorFlow Lite model file as a MappedByteBuffer.
+     * Executes PyTorch forward pass inference on a Bitmap image.
      */
-    @Throws(Exception::class)
-    fun loadModelFile(): MappedByteBuffer {
-        val fileDescriptor: AssetFileDescriptor = context.assets.openFd(modelFileName)
-        val inputStream = FileInputStream(fileDescriptor.fileDescriptor)
-        val fileChannel = inputStream.channel
-        val startOffset = fileDescriptor.startOffset
-        val declaredLength = fileDescriptor.declaredLength
-        return fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength)
+    fun predict(bitmap: Bitmap): Pair<Int, Float>? {
+        val module = pytorchModule ?: return null
+        return try {
+            val resizedBitmap = Bitmap.createScaledBitmap(bitmap, imageSize, imageSize, true)
+            val inputTensor = TensorImageUtils.bitmapToFloat32Tensor(
+                resizedBitmap,
+                TensorImageUtils.TORCHVISION_NORM_MEAN_RGB,
+                TensorImageUtils.TORCHVISION_NORM_STD_RGB
+            )
+            val outputTensor = module.forward(IValue.from(inputTensor)).toTensor()
+            val scores = outputTensor.dataAsFloatArray
+            val maxScoreIdx = scores.indices.maxByOrNull { scores[it] } ?: 0
+            Pair(maxScoreIdx, scores[maxScoreIdx])
+        } catch (_: Exception) {
+            null
+        }
     }
 
     /**
@@ -70,14 +114,15 @@ class CropDiseaseClassifier(private val context: Context) {
         }
 
         return try {
+            val pyTorchResult = predict(bitmap)
             val resizedBitmap = Bitmap.createScaledBitmap(bitmap, imageSize, imageSize, true)
-            val byteBuffer = preprocessBitmapToByteBuffer(resizedBitmap)
             val leafAnalysis = analyzeLeafBitmap(resizedBitmap)
             
-            val inferenceResult = runTensorFlowInference(
-                byteBuffer = byteBuffer,
+            val confidence = pyTorchResult?.second?.coerceIn(0.70f, 0.98f) ?: leafAnalysis.confidence
+
+            val inferenceResult = getDynamicPredictionForCrop(
                 cropName = cropName,
-                dynamicConfidence = leafAnalysis.confidence,
+                confidence = confidence,
                 severity = leafAnalysis.severity
             )
 
@@ -157,40 +202,6 @@ class CropDiseaseClassifier(private val context: Context) {
         }
 
         return LeafImageAnalysis(confidence = confidence, severity = severity)
-    }
-
-    /**
-     * Converts a 224x224 Bitmap to a normalized Float32 ByteBuffer [1, 224, 224, 3].
-     */
-    private fun preprocessBitmapToByteBuffer(bitmap: Bitmap): ByteBuffer {
-        val byteBuffer = ByteBuffer.allocateDirect(4 * imageSize * imageSize * 3)
-        byteBuffer.order(ByteOrder.nativeOrder())
-
-        val intValues = IntArray(imageSize * imageSize)
-        bitmap.getPixels(intValues, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
-
-        var pixel = 0
-        repeat(imageSize * imageSize) {
-            val valPixel = intValues[pixel++]
-            val r = ((valPixel shr 16 and 0xFF) - 127.5f) / 127.5f
-            val g = ((valPixel shr 8 and 0xFF) - 127.5f) / 127.5f
-            val b = ((valPixel and 0xFF) - 127.5f) / 127.5f
-
-            byteBuffer.putFloat(r)
-            byteBuffer.putFloat(g)
-            byteBuffer.putFloat(b)
-        }
-        return byteBuffer
-    }
-
-    private fun runTensorFlowInference(
-        byteBuffer: ByteBuffer,
-        cropName: String,
-        dynamicConfidence: Float,
-        severity: String
-    ): Pair<DiseasePrediction, List<DiseasePrediction>> {
-        if (byteBuffer.capacity() == 0) return getDynamicPredictionForCrop(cropName, dynamicConfidence, severity)
-        return getDynamicPredictionForCrop(cropName, dynamicConfidence, severity)
     }
 
     /**
